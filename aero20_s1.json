@@ -1,0 +1,708 @@
+{
+ "pack": "aero20",
+ "version": "0.1-s1",
+ "domain": "aero",
+ "lens": "Engineer's note",
+ "imports": "import math\nimport numpy as np\nfrom scipy.spatial.transform import Rotation\n",
+ "generated_by": "aero20_s1_reference_check.py",
+ "generated_at": "2026-11-06",
+ "problems": [
+  {
+   "id": "AE01",
+   "area": "standard atmosphere",
+   "entry_point": "isa_troposphere",
+   "prompt": "def isa_troposphere(h_m):\n    \"\"\"Return (T [K], p [Pa], rho [kg/m^3]) of the International Standard Atmosphere at\n    GEOPOTENTIAL altitude h_m in METRES, valid for 0 <= h_m <= 11000.\n    Use T0 = 288.15 K, p0 = 101325 Pa, lapse rate 0.0065 K/m (temperature falls with height),\n    R = 287.05287 J/(kg K), g0 = 9.80665 m/s^2 (US Standard Atmosphere 1976).\"\"\"\n",
+   "prompt_minimal": "Write isa_troposphere(h) returning temperature, pressure and density of the standard atmosphere at altitude h.",
+   "tests": [
+    {
+     "args": [
+      0.0
+     ],
+     "expected": [
+      288.15,
+      101325.0,
+      1.225000018124288
+     ],
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      5000.0
+     ],
+     "expected": [
+      255.64999999999998,
+      54019.888188145786,
+      0.736115547399152
+     ],
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      11000.0
+     ],
+     "expected": [
+      216.64999999999998,
+      22632.040095007793,
+      0.3639176481016034
+     ],
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      2500.0
+     ],
+     "expected": [
+      271.9,
+      74682.51762408376,
+      0.9568587862321352
+     ],
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      8000.0
+     ],
+     "expected": [
+      236.14999999999998,
+      35599.78521264196,
+      0.5251671281613589
+     ],
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "pressure falls with altitude",
+     "code": "ps = [f(h)[1] for h in range(0, 11001, 500)]; assert all(a > b for a, b in zip(ps, ps[1:]))"
+    },
+    {
+     "name": "sea level recovered",
+     "code": "T, p, r = f(0.0); assert abs(p - 101325) < 1e-6 and abs(T - 288.15) < 1e-9"
+    }
+   ],
+   "gotcha": "Altitude in km vs m; geometric vs geopotential altitude.",
+   "source": "US Standard Atmosphere 1976.",
+   "canonical_solution": "def isa_troposphere(h_m):\n    \"\"\"Return (T [K], p [Pa], rho [kg/m^3]) of the International Standard Atmosphere at\n    GEOPOTENTIAL altitude h_m in METRES, valid for 0 <= h_m <= 11000.\n    Use T0 = 288.15 K, p0 = 101325 Pa, lapse rate 0.0065 K/m (temperature falls with height),\n    R = 287.05287 J/(kg K), g0 = 9.80665 m/s^2 (US Standard Atmosphere 1976).\"\"\"\n    T0, p0, L, R, g0 = 288.15, 101325.0, 0.0065, 287.05287, 9.80665\n    T = T0 - L * h_m\n    p = p0 * (T / T0) ** (g0 / (R * L))\n    return (T, p, p / (R * T))\n",
+   "reviewers": []
+  },
+  {
+   "id": "AE03",
+   "area": "aerodynamics",
+   "entry_point": "max_lift_to_drag",
+   "prompt": "def max_lift_to_drag(cd0, e, aspect_ratio):\n    \"\"\"Return the maximum lift-to-drag ratio (L/D)max for a parabolic drag polar\n    CD = CD0 + k*CL^2 with k = 1/(pi * e * AR); e is the Oswald efficiency factor.\n    Assumes cd0 > 0, 0 < e <= 1, aspect_ratio > 0, and that the quadratic polar holds.\"\"\"\n",
+   "prompt_minimal": "Write max_lift_to_drag(cd0, e, AR) for a parabolic drag polar.",
+   "tests": [
+    {
+     "args": [
+      0.025,
+      0.8,
+      8
+     ],
+     "expected": 14.179630807244125,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      0.02,
+      0.85,
+      10
+     ],
+     "expected": 18.27003610954055,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      0.03,
+      0.75,
+      6
+     ],
+     "expected": 10.854018818374014,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "rises with aspect ratio",
+     "code": "assert f(0.025, 0.8, 12) > f(0.025, 0.8, 8)"
+    },
+    {
+     "name": "quartering CD0 doubles (L/D)max",
+     "code": "assert abs(f(0.025/4, 0.8, 8) / f(0.025, 0.8, 8) - 2) < 1e-9"
+    }
+   ],
+   "gotcha": "Oswald factor omitted from k.",
+   "source": "Parabolic drag polar; standard aircraft-performance result.",
+   "canonical_solution": "def max_lift_to_drag(cd0, e, aspect_ratio):\n    \"\"\"Return the maximum lift-to-drag ratio (L/D)max for a parabolic drag polar\n    CD = CD0 + k*CL^2 with k = 1/(pi * e * AR); e is the Oswald efficiency factor.\n    Assumes cd0 > 0, 0 < e <= 1, aspect_ratio > 0, and that the quadratic polar holds.\"\"\"\n    k = 1.0 / (math.pi * e * aspect_ratio)\n    return 1.0 / (2.0 * math.sqrt(cd0 * k))\n",
+   "reviewers": []
+  },
+  {
+   "id": "AE07",
+   "area": "propulsion",
+   "entry_point": "rocket_thrust",
+   "prompt": "def rocket_thrust(mdot, ve, pe, pa, ae):\n    \"\"\"Return rocket thrust in N: mdot [kg/s] * exhaust velocity ve [m/s] plus the pressure\n    term (pe - pa) * ae, with exit pressure pe and ambient pressure pa in Pa and exit area ae in m^2.\n    Assumes steady, one-dimensional exhaust with uniform exit properties and no flow separation.\"\"\"\n",
+   "prompt_minimal": "Write rocket_thrust(mdot, ve, pe, pa, ae).",
+   "tests": [
+    {
+     "args": [
+      100,
+      2500,
+      50000.0,
+      101325,
+      0.5
+     ],
+     "expected": 224337.5,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      50,
+      3000,
+      80000.0,
+      40000.0,
+      0.3
+     ],
+     "expected": 162000.0,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      200,
+      2200,
+      30000.0,
+      101325,
+      1.2
+     ],
+     "expected": 354410.0,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "matched expansion gives mdot*ve",
+     "code": "assert abs(f(100, 2500, 101325, 101325, 0.5) - 250000) < 1e-6"
+    },
+    {
+     "name": "over-expanded nozzle gives less thrust",
+     "code": "assert f(100, 2500, 50e3, 101325, 0.5) < 250000"
+    }
+   ],
+   "gotcha": "Pressure term dropped or sign flipped.",
+   "source": "Rocket thrust equation.",
+   "canonical_solution": "def rocket_thrust(mdot, ve, pe, pa, ae):\n    \"\"\"Return rocket thrust in N: mdot [kg/s] * exhaust velocity ve [m/s] plus the pressure\n    term (pe - pa) * ae, with exit pressure pe and ambient pressure pa in Pa and exit area ae in m^2.\n    Assumes steady, one-dimensional exhaust with uniform exit properties and no flow separation.\"\"\"\n    return mdot * ve + (pe - pa) * ae\n",
+   "reviewers": []
+  },
+  {
+   "id": "AE09",
+   "area": "rocket performance",
+   "entry_point": "tsiolkovsky_dv",
+   "prompt": "def tsiolkovsky_dv(isp_s, m0, mf):\n    \"\"\"Return ideal rocket delta-v in m/s from specific impulse isp_s in SECONDS, initial mass m0\n    and final mass mf (same units). Use g0 = 9.80665 m/s^2 and the NATURAL logarithm.\n    Assumes m0 >= mf > 0 and constant exhaust velocity; no gravity or drag losses.\"\"\"\n",
+   "prompt_minimal": "Write tsiolkovsky_dv(isp, m0, mf) returning rocket delta-v.",
+   "tests": [
+    {
+     "args": [
+      300,
+      2.718281828459045,
+      1.0
+     ],
+     "expected": 2941.995,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      350,
+      5.0,
+      2.0
+     ],
+     "expected": 3145.009877006789,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      450,
+      3.0,
+      1.5
+     ],
+     "expected": 3058.853309207184,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "no burn gives zero",
+     "code": "assert abs(f(300, 1.0, 1.0)) < 1e-12"
+    },
+    {
+     "name": "delta-v adds over successive burns",
+     "code": "assert abs(f(300, 4.0, 2.0) + f(300, 2.0, 1.0) - f(300, 4.0, 1.0)) < 1e-9"
+    }
+   ],
+   "gotcha": "log10 instead of natural log; Isp in s vs exhaust velocity.",
+   "source": "Tsiolkovsky rocket equation.",
+   "canonical_solution": "def tsiolkovsky_dv(isp_s, m0, mf):\n    \"\"\"Return ideal rocket delta-v in m/s from specific impulse isp_s in SECONDS, initial mass m0\n    and final mass mf (same units). Use g0 = 9.80665 m/s^2 and the NATURAL logarithm.\n    Assumes m0 >= mf > 0 and constant exhaust velocity; no gravity or drag losses.\"\"\"\n    return isp_s * 9.80665 * math.log(m0 / mf)\n",
+   "reviewers": []
+  },
+  {
+   "id": "AE11",
+   "area": "orbital mechanics",
+   "entry_point": "circular_orbit",
+   "prompt": "def circular_orbit(alt_km):\n    \"\"\"Return (speed [km/s], period [s]) of a circular Earth orbit at ALTITUDE alt_km in km above\n    the equatorial radius 6378.137 km (WGS-84), with mu = 398600.4418 km^3/s^2.\n    Assumes two-body point-mass gravity (no J2, drag, or third bodies) and alt_km > -6378.137.\"\"\"\n",
+   "prompt_minimal": "Write circular_orbit(alt) returning orbital speed and period.",
+   "tests": [
+    {
+     "args": [
+      400.0
+     ],
+     "expected": [
+      7.668558175407055,
+      5553.624271252228
+     ],
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      800.0
+     ],
+     "expected": [
+      7.4518313334862665,
+      6052.413549492112
+     ],
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      35786.0
+     ],
+     "expected": [
+      3.0746612890103515,
+      86163.9904971709
+     ],
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "v^2 r = mu",
+     "code": "v, T = f(400.0); r = 6378.137 + 400.0; assert abs(v*v*r / 398600.4418 - 1) < 1e-9"
+    },
+    {
+     "name": "Kepler's third law",
+     "code": "(v1, T1), (v2, T2) = f(400.0), f(2000.0); r1, r2 = 6778.137, 8378.137; assert abs((T1**2/r1**3) / (T2**2/r2**3) - 1) < 1e-9"
+    }
+   ],
+   "gotcha": "Altitude used as radius; mu in m^3/s^2 vs km^3/s^2.",
+   "source": "Two-body circular orbit; WGS-84 radius.",
+   "canonical_solution": "def circular_orbit(alt_km):\n    \"\"\"Return (speed [km/s], period [s]) of a circular Earth orbit at ALTITUDE alt_km in km above\n    the equatorial radius 6378.137 km (WGS-84), with mu = 398600.4418 km^3/s^2.\n    Assumes two-body point-mass gravity (no J2, drag, or third bodies) and alt_km > -6378.137.\"\"\"\n    mu, re = 398600.4418, 6378.137\n    r = re + alt_km\n    return (math.sqrt(mu / r), 2 * math.pi * math.sqrt(r ** 3 / mu))\n",
+   "reviewers": []
+  },
+  {
+   "id": "AE12",
+   "area": "orbital mechanics",
+   "entry_point": "solve_kepler",
+   "prompt": "def solve_kepler(M, e):\n    \"\"\"Return the eccentric anomaly E in RADIANS solving Kepler's equation M = E - e*sin(E) for\n    mean anomaly M in radians (any real value) and eccentricity 0 <= e < 1. Iterate (e.g. Newton)\n    until the change is below 1e-12, and raise RuntimeError if it does not converge in 50 iterations.\"\"\"\n",
+   "prompt_minimal": "Write solve_kepler(M, e) returning the eccentric anomaly.",
+   "tests": [
+    {
+     "args": [
+      1.0,
+      0.3
+     ],
+     "expected": 1.2880913132118377,
+     "rel_tol": 1e-08,
+     "abs_tol": 0.0
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      2.5,
+      0.7
+     ],
+     "expected": 2.76041178743013,
+     "rel_tol": 1e-08,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      0.5,
+      0.1
+     ],
+     "expected": 0.5524799869065704,
+     "rel_tol": 1e-08,
+     "abs_tol": 0.0
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "residual ~0 up to e = 0.95",
+     "code": "for M, e in [(0.2, 0.95), (2.0, 0.5), (3.0, 0.9)]:\n    E = f(M, e); assert abs(E - e*math.sin(E) - M) < 1e-10"
+    },
+    {
+     "name": "circular orbit gives E = M",
+     "code": "assert abs(f(1.3, 0.0) - 1.3) < 1e-12"
+    }
+   ],
+   "gotcha": "Fixed iteration count; no convergence check; degrees vs radians.",
+   "source": "Kepler's equation.",
+   "canonical_solution": "def solve_kepler(M, e):\n    \"\"\"Return the eccentric anomaly E in RADIANS solving Kepler's equation M = E - e*sin(E) for\n    mean anomaly M in radians (any real value) and eccentricity 0 <= e < 1. Iterate (e.g. Newton)\n    until the change is below 1e-12, and raise RuntimeError if it does not converge in 50 iterations.\"\"\"\n    if not 0 <= e < 1:\n        raise ValueError(\"elliptic orbits only\")\n    Mr = math.remainder(M, 2 * math.pi)          # principal value in [-pi, pi]; whole revolutions restored below\n    E = Mr if e < 0.8 else math.copysign(math.pi, Mr)\n    for _ in range(50):\n        dE = (E - e * math.sin(E) - Mr) / (1 - e * math.cos(E))\n        E -= dE\n        if abs(dE) < 1e-12:\n            return E + (M - Mr)\n    raise RuntimeError(\"Kepler solver did not converge\")\n",
+   "reviewers": []
+  },
+  {
+   "id": "AE14",
+   "area": "coordinates",
+   "entry_point": "quat_rotate",
+   "prompt": "def quat_rotate(q_wxyz, v):\n    \"\"\"Actively rotate 3-vector v by the unit quaternion q given SCALAR-FIRST as [w, x, y, z]\n    (Hamilton convention, right-handed frame). Return the rotated vector as a list of 3 floats.\n    Assumes q has unit norm.\"\"\"\n",
+   "prompt_minimal": "Write quat_rotate(q, v) that rotates vector v by quaternion q.",
+   "tests": [
+    {
+     "args": [
+      [
+       0.7071067811865476,
+       0.0,
+       0.0,
+       0.7071067811865475
+      ],
+      [
+       1.0,
+       0.0,
+       0.0
+      ]
+     ],
+     "expected": [
+      2.220446049250313e-16,
+      1.0,
+      0.0
+     ],
+     "rel_tol": 1e-09,
+     "abs_tol": 1e-09
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      [
+       0.7071067811865476,
+       0.7071067811865475,
+       0.0,
+       0.0
+      ],
+      [
+       0.0,
+       1.0,
+       0.0
+      ]
+     ],
+     "expected": [
+      0.0,
+      2.220446049250313e-16,
+      1.0
+     ],
+     "rel_tol": 1e-09,
+     "abs_tol": 1e-09
+    },
+    {
+     "args": [
+      [
+       0.5000000000000001,
+       0.0,
+       0.8660254037844386,
+       0.0
+      ],
+      [
+       1.0,
+       0.0,
+       0.0
+      ]
+     ],
+     "expected": [
+      -0.4999999999999998,
+      0.0,
+      -0.8660254037844388
+     ],
+     "rel_tol": 1e-09,
+     "abs_tol": 1e-09
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "norm preserved",
+     "code": "import numpy as np\nq = [0.5, 0.5, 0.5, 0.5]; v = [0.3, -1.2, 2.0]; assert abs(np.linalg.norm(f(q, v)) - np.linalg.norm(v)) < 1e-12"
+    },
+    {
+     "name": "q and -q give the same rotation",
+     "code": "import numpy as np\nq = np.array([0.5, 0.5, 0.5, 0.5]); v = [0.3, -1.2, 2.0]; assert np.allclose(f(list(q), v), f(list(-q), v))"
+    }
+   ],
+   "gotcha": "Scalar-last order assumed (SciPy's default).",
+   "source": "Hamilton quaternion rotation; SciPy Rotation.",
+   "canonical_solution": "def quat_rotate(q_wxyz, v):\n    \"\"\"Actively rotate 3-vector v by the unit quaternion q given SCALAR-FIRST as [w, x, y, z]\n    (Hamilton convention, right-handed frame). Return the rotated vector as a list of 3 floats.\n    Assumes q has unit norm.\"\"\"\n    w, x, y, z = q_wxyz\n    return Rotation.from_quat([x, y, z, w]).apply(v).tolist()\n",
+   "reviewers": []
+  },
+  {
+   "id": "AE15",
+   "area": "aircraft performance",
+   "entry_point": "breguet_range_jet",
+   "prompt": "def breguet_range_jet(V, tsfc_per_hr, L_over_D, Wi_over_Wf):\n    \"\"\"Return jet cruise range in METRES from the Breguet equation R = (V/c)(L/D) ln(Wi/Wf), with\n    true airspeed V in m/s and thrust-specific fuel consumption tsfc_per_hr on a weight basis in\n    1/HOUR (convert to 1/s before use). Assumes constant V, L/D and TSFC over the cruise and\n    Wi_over_Wf >= 1.\"\"\"\n",
+   "prompt_minimal": "Write breguet_range_jet(V, tsfc, L_D, Wi_Wf) returning the range of a jet.",
+   "tests": [
+    {
+     "args": [
+      250,
+      0.6,
+      16,
+      1.3
+     ],
+     "expected": 6296742.347219786,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      230,
+      0.55,
+      18,
+      1.25
+     ],
+     "expected": 6046784.525067239,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      200,
+      0.7,
+      14,
+      1.4
+     ],
+     "expected": 4845200.207345466,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "no fuel, no range",
+     "code": "assert abs(f(250, 0.6, 16, 1.0)) < 1e-9"
+    },
+    {
+     "name": "plausible airliner range 1,000-20,000 km",
+     "code": "assert 1e6 < f(250, 0.6, 16, 1.3) < 2e7"
+    }
+   ],
+   "gotcha": "TSFC per hour used as per second.",
+   "source": "Breguet range equation (jet).",
+   "canonical_solution": "def breguet_range_jet(V, tsfc_per_hr, L_over_D, Wi_over_Wf):\n    \"\"\"Return jet cruise range in METRES from the Breguet equation R = (V/c)(L/D) ln(Wi/Wf), with\n    true airspeed V in m/s and thrust-specific fuel consumption tsfc_per_hr on a weight basis in\n    1/HOUR (convert to 1/s before use). Assumes constant V, L/D and TSFC over the cruise and\n    Wi_over_Wf >= 1.\"\"\"\n    c = tsfc_per_hr / 3600.0\n    return (V / c) * L_over_D * math.log(Wi_over_Wf)\n",
+   "reviewers": []
+  },
+  {
+   "id": "AE16",
+   "area": "aircraft performance",
+   "entry_point": "stall_speed",
+   "prompt": "def stall_speed(mass_kg, rho, S, CLmax):\n    \"\"\"Return stall speed in m/s. mass_kg is aircraft MASS in kg (weight = mass * 9.80665 N);\n    rho is air density in kg/m^3; S is wing area in m^2; CLmax is the maximum lift coefficient\n    for the configuration. Assumes steady level flight (lift = weight) and positive inputs.\"\"\"\n",
+   "prompt_minimal": "Write stall_speed(mass, rho, S, CLmax) returning the stall speed of an aircraft.",
+   "tests": [
+    {
+     "args": [
+      1100,
+      1.225,
+      16.2,
+      1.6
+     ],
+     "expected": 26.06670489449016,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      1500,
+      1.0,
+      20.0,
+      1.8
+     ],
+     "expected": 28.58707458508711,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      700,
+      1.1,
+      12.0,
+      1.4
+     ],
+     "expected": 27.256706152854022,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "light-aircraft stall speed 15-40 m/s",
+     "code": "assert 15 < f(1100, 1.225, 16.2, 1.6) < 40"
+    },
+    {
+     "name": "four times the mass doubles the speed",
+     "code": "assert abs(f(4400, 1.225, 16.2, 1.6) / f(1100, 1.225, 16.2, 1.6) - 2) < 1e-9"
+    }
+   ],
+   "gotcha": "Mass passed where weight is required.",
+   "source": "Lift equation at CLmax.",
+   "canonical_solution": "def stall_speed(mass_kg, rho, S, CLmax):\n    \"\"\"Return stall speed in m/s. mass_kg is aircraft MASS in kg (weight = mass * 9.80665 N);\n    rho is air density in kg/m^3; S is wing area in m^2; CLmax is the maximum lift coefficient\n    for the configuration. Assumes steady level flight (lift = weight) and positive inputs.\"\"\"\n    return math.sqrt(2 * mass_kg * 9.80665 / (rho * S * CLmax))\n",
+   "reviewers": []
+  },
+  {
+   "id": "AE19",
+   "area": "structures",
+   "entry_point": "cantilever_tip_deflection",
+   "prompt": "def cantilever_tip_deflection(P, L, E, b, h):\n    \"\"\"Return tip deflection in m of a rectangular cantilever with tip load P [N], length L [m],\n    Young's modulus E [Pa], width b [m] and depth h [m] in the direction of the load\n    (second moment of area I = b*h^3/12). Assumes a prismatic, linear-elastic beam with small\n    deflections (Euler-Bernoulli).\"\"\"\n",
+   "prompt_minimal": "Write cantilever_tip_deflection(P, L, E, b, h).",
+   "tests": [
+    {
+     "args": [
+      1000,
+      2,
+      70000000000.0,
+      0.05,
+      0.1
+     ],
+     "expected": 0.00914285714285714,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "holdout_tests": [
+    {
+     "args": [
+      500,
+      1.5,
+      200000000000.0,
+      0.04,
+      0.08
+     ],
+     "expected": 0.0016479492187499998,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    },
+    {
+     "args": [
+      2000,
+      3.0,
+      70000000000.0,
+      0.1,
+      0.2
+     ],
+     "expected": 0.0038571428571428563,
+     "rel_tol": 1e-06,
+     "abs_tol": 0.0
+    }
+   ],
+   "sanity_checks": [
+    {
+     "name": "scales with L cubed",
+     "code": "assert abs(f(1000, 4, 70e9, 0.05, 0.10) / f(1000, 2, 70e9, 0.05, 0.10) - 8) < 1e-9"
+    },
+    {
+     "name": "doubling depth divides deflection by 8",
+     "code": "assert abs(f(1000, 2, 70e9, 0.05, 0.10) / f(1000, 2, 70e9, 0.05, 0.20) - 8) < 1e-9"
+    }
+   ],
+   "gotcha": "Width and depth swapped in I; GPa vs Pa.",
+   "source": "Euler-Bernoulli cantilever.",
+   "canonical_solution": "def cantilever_tip_deflection(P, L, E, b, h):\n    \"\"\"Return tip deflection in m of a rectangular cantilever with tip load P [N], length L [m],\n    Young's modulus E [Pa], width b [m] and depth h [m] in the direction of the load\n    (second moment of area I = b*h^3/12). Assumes a prismatic, linear-elastic beam with small\n    deflections (Euler-Bernoulli).\"\"\"\n    return P * L ** 3 / (3 * E * (b * h ** 3 / 12))\n",
+   "reviewers": []
+  }
+ ],
+ "defects": [
+  {
+   "id": "D1",
+   "problem": "AE01",
+   "description": "Mixed units: altitude converted to km but the lapse rate left per metre (5000 m is computed as 5 m)",
+   "code": "def isa_troposphere(h_m):            # D1: metres -> km conversion, but lapse rate still in K/m\n    T0, p0, L, R, g0 = 288.15, 101325.0, 0.0065, 287.05287, 9.80665\n    h = h_m / 1000.0\n    T = T0 - L * h\n    p = p0 * (T / T0) ** (g0 / (R * L))\n    return (T, p, p / (R * T))\n",
+   "expected_detection": {
+    "test": "caught",
+    "sanity": "MISSED"
+   }
+  },
+  {
+   "id": "D3",
+   "problem": "AE16",
+   "description": "Mass used as weight",
+   "code": "def stall_speed(mass_kg, rho, S, CLmax):   # D3\n    return math.sqrt(2 * mass_kg / (rho * S * CLmax))\n",
+   "expected_detection": {
+    "test": "caught",
+    "sanity": "caught"
+   }
+  },
+  {
+   "id": "D4",
+   "problem": "AE15",
+   "description": "TSFC per hour used as per second",
+   "code": "def breguet_range_jet(V, tsfc_per_hr, L_over_D, Wi_over_Wf):   # D4\n    return (V / tsfc_per_hr) * L_over_D * math.log(Wi_over_Wf)\n",
+   "expected_detection": {
+    "test": "caught",
+    "sanity": "caught"
+   }
+  },
+  {
+   "id": "D5",
+   "problem": "AE14",
+   "description": "Scalar-first quaternion read as scalar-last",
+   "code": "def quat_rotate(q_wxyz, v):    # D5: passes [w,x,y,z] to SciPy's scalar-last default\n    return Rotation.from_quat(q_wxyz).apply(v).tolist()\n",
+   "expected_detection": {
+    "test": "caught",
+    "sanity": "MISSED"
+   }
+  },
+  {
+   "id": "D7",
+   "problem": "AE09",
+   "description": "log10 instead of natural log",
+   "code": "def tsiolkovsky_dv(isp_s, m0, mf):      # D7\n    return isp_s * 9.80665 * math.log10(m0 / mf)\n",
+   "expected_detection": {
+    "test": "caught",
+    "sanity": "MISSED"
+   }
+  },
+  {
+   "id": "D12",
+   "problem": "AE12",
+   "description": "Fixed three iterations, no convergence check",
+   "code": "def solve_kepler(M, e):        # D12: fixed three Newton steps, no convergence check\n    E = M\n    for _ in range(3):\n        E -= (E - e * math.sin(E) - M) / (1 - e * math.cos(E))\n    return E\n",
+   "expected_detection": {
+    "test": "MISSED",
+    "sanity": "caught"
+   }
+  }
+ ],
+ "canonical_content_sha256": "c87339e48308f45b08115ca4cd7b04ed6b791fc0264e9d8091f523b5e9cb3378"
+}

@@ -1,0 +1,121 @@
+{
+ "dataset": "HumanEval (10-problem sample for Lab 0)",
+ "about": "HumanEval is OpenAI's benchmark of 164 hand-written Python problems (Chen et al., 2021, 'Evaluating Large Language Models Trained on Code'). Each problem gives a function signature and docstring (the prompt); a model writes the body; the problem's check(candidate) function decides pass or fail.",
+ "license": "MIT (openai/human-eval)",
+ "official_source": [
+  "https://github.com/openai/human-eval (data/HumanEval.jsonl.gz)",
+  "https://huggingface.co/datasets/openai/openai_humaneval"
+ ],
+ "retrieved_from": "https://huggingface.co/smallan13/DebateCoder/raw/main/data/HumanEval/HumanEval.jsonl (a public mirror; copied verbatim)",
+ "retrieved": "2026-11-11",
+ "verification": "Every canonical solution passes its own tests. Lab 0 compares each record's sha256 with the official Hugging Face copy whenever it can reach the internet, and reports any difference.",
+ "fields": {
+  "task_id": "unique id, HumanEval/<n>",
+  "prompt": "imports, signature and docstring the model is given",
+  "entry_point": "name of the function to test",
+  "canonical_solution": "a reference function body (indented)",
+  "test": "Python code defining check(candidate); passing = no assertion fails"
+ },
+ "problems": [
+  {
+   "task_id": "HumanEval/0",
+   "prompt": "from typing import List\n\n\ndef has_close_elements(numbers: List[float], threshold: float) -> bool:\n    \"\"\" Check if in given list of numbers, are any two numbers closer to each other than\n    given threshold.\n    >>> has_close_elements([1.0, 2.0, 3.0], 0.5)\n    False\n    >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)\n    True\n    \"\"\"\n",
+   "entry_point": "has_close_elements",
+   "canonical_solution": "    for idx, elem in enumerate(numbers):\n        for idx2, elem2 in enumerate(numbers):\n            if idx != idx2:\n                distance = abs(elem - elem2)\n                if distance < threshold:\n                    return True\n\n    return False\n",
+   "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([1.0, 2.0, 3.9, 4.0, 5.0, 2.2], 0.3) == True\n    assert candidate([1.0, 2.0, 3.9, 4.0, 5.0, 2.2], 0.05) == False\n    assert candidate([1.0, 2.0, 5.9, 4.0, 5.0], 0.95) == True\n    assert candidate([1.0, 2.0, 5.9, 4.0, 5.0], 0.8) == False\n    assert candidate([1.0, 2.0, 3.0, 4.0, 5.0, 2.0], 0.1) == True\n    assert candidate([1.1, 2.2, 3.1, 4.1, 5.1], 1.0) == True\n    assert candidate([1.1, 2.2, 3.1, 4.1, 5.1], 0.5) == False\n\n",
+   "why_selected": "Used in Lab 1. A typical problem: signature, docstring with examples, 7 asserts.",
+   "used_in_lab1": true,
+   "record_sha256": "0d2d2694d902de16df541e5e8b2e0fbaa3c7142ebf8cda25d9ad4ab275c2a836"
+  },
+  {
+   "task_id": "HumanEval/2",
+   "prompt": "\n\ndef truncate_number(number: float) -> float:\n    \"\"\" Given a positive floating point number, it can be decomposed into\n    and integer part (largest integer smaller than given number) and decimals\n    (leftover part always smaller than 1).\n\n    Return the decimal part of the number.\n    >>> truncate_number(3.5)\n    0.5\n    \"\"\"\n",
+   "entry_point": "truncate_number",
+   "canonical_solution": "    return number % 1.0\n",
+   "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate(3.5) == 0.5\n    assert abs(candidate(1.33) - 0.33) < 1e-6\n    assert abs(candidate(123.456) - 0.456) < 1e-6\n",
+   "why_selected": "Used in Lab 1. Floating-point answers checked with a tolerance (abs(...) < 1e-6).",
+   "used_in_lab1": true,
+   "record_sha256": "fa2ea546ab75a5698d94db217bc339872726384da016dd6f01c3593a389838f9"
+  },
+  {
+   "task_id": "HumanEval/4",
+   "prompt": "from typing import List\n\n\ndef mean_absolute_deviation(numbers: List[float]) -> float:\n    \"\"\" For a given list of input numbers, calculate Mean Absolute Deviation\n    around the mean of this dataset.\n    Mean Absolute Deviation is the average absolute difference between each\n    element and a centerpoint (mean in this case):\n    MAD = average | x - x_mean |\n    >>> mean_absolute_deviation([1.0, 2.0, 3.0, 4.0])\n    1.0\n    \"\"\"\n",
+   "entry_point": "mean_absolute_deviation",
+   "canonical_solution": "    mean = sum(numbers) / len(numbers)\n    return sum(abs(x - mean) for x in numbers) / len(numbers)\n",
+   "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert abs(candidate([1.0, 2.0, 3.0]) - 2.0/3.0) < 1e-6\n    assert abs(candidate([1.0, 2.0, 3.0, 4.0]) - 1.0) < 1e-6\n    assert abs(candidate([1.0, 2.0, 3.0, 4.0, 5.0]) - 6.0/5.0) < 1e-6\n\n",
+   "why_selected": "Used in Lab 1. Numeric result, tolerance-based tests.",
+   "used_in_lab1": true,
+   "record_sha256": "e9f09079ccc11e594aa4584ad58c715ab8dea4aebf60686f361a67b3c8765bf7"
+  },
+  {
+   "task_id": "HumanEval/10",
+   "prompt": "\n\ndef is_palindrome(string: str) -> bool:\n    \"\"\" Test if given string is a palindrome \"\"\"\n    return string == string[::-1]\n\n\ndef make_palindrome(string: str) -> str:\n    \"\"\" Find the shortest palindrome that begins with a supplied string.\n    Algorithm idea is simple:\n    - Find the longest postfix of supplied string that is a palindrome.\n    - Append to the end of the string reverse of a string prefix that comes before the palindromic suffix.\n    >>> make_palindrome('')\n    ''\n    >>> make_palindrome('cat')\n    'catac'\n    >>> make_palindrome('cata')\n    'catac'\n    \"\"\"\n",
+   "entry_point": "make_palindrome",
+   "canonical_solution": "    if not string:\n        return ''\n\n    beginning_of_suffix = 0\n\n    while not is_palindrome(string[beginning_of_suffix:]):\n        beginning_of_suffix += 1\n\n    return string + string[:beginning_of_suffix][::-1]\n",
+   "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == ''\n    assert candidate('x') == 'x'\n    assert candidate('xyz') == 'xyzyx'\n    assert candidate('xyx') == 'xyx'\n    assert candidate('jerry') == 'jerryrrej'\n",
+   "why_selected": "The prompt contains a helper function (is_palindrome) the solution must use.",
+   "used_in_lab1": false,
+   "record_sha256": "841ec5985291075eb4095a3890971908ec17e599ced7406a61ea32ec4604de0e"
+  },
+  {
+   "task_id": "HumanEval/12",
+   "prompt": "from typing import List, Optional\n\n\ndef longest(strings: List[str]) -> Optional[str]:\n    \"\"\" Out of list of strings, return the longest one. Return the first one in case of multiple\n    strings of the same length. Return None in case the input list is empty.\n    >>> longest([])\n\n    >>> longest(['a', 'b', 'c'])\n    'a'\n    >>> longest(['a', 'bb', 'ccc'])\n    'ccc'\n    \"\"\"\n",
+   "entry_point": "longest",
+   "canonical_solution": "    if not strings:\n        return None\n\n    maxlen = max(len(x) for x in strings)\n    for s in strings:\n        if len(s) == maxlen:\n            return s\n",
+   "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([]) == None\n    assert candidate(['x', 'y', 'z']) == 'x'\n    assert candidate(['x', 'yyy', 'zzzz', 'www', 'kkkk', 'abc']) == 'zzzz'\n",
+   "why_selected": "Used in Lab 1. Returns None for empty input; the docstring example prints nothing.",
+   "used_in_lab1": true,
+   "record_sha256": "ff19681aed7f9ae2dae1d74315fab8bccfc143eeccf1b6286f208096aabcab47"
+  },
+  {
+   "task_id": "HumanEval/23",
+   "prompt": "\n\ndef strlen(string: str) -> int:\n    \"\"\" Return length of given string\n    >>> strlen('')\n    0\n    >>> strlen('abc')\n    3\n    \"\"\"\n",
+   "entry_point": "strlen",
+   "canonical_solution": "    return len(string)\n",
+   "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == 0\n    assert candidate('x') == 1\n    assert candidate('asdasnakj') == 9\n",
+   "why_selected": "Used in Lab 1. The simplest kind of problem: one line of code.",
+   "used_in_lab1": true,
+   "record_sha256": "59c2972154b4792c7de870f69ceffad16ccbede8462a62e5fe9d4c5b94245932"
+  },
+  {
+   "task_id": "HumanEval/32",
+   "prompt": "import math\n\n\ndef poly(xs: list, x: float):\n    \"\"\"\n    Evaluates polynomial with coefficients xs at point x.\n    return xs[0] + xs[1] * x + xs[1] * x^2 + .... xs[n] * x^n\n    \"\"\"\n    return sum([coeff * math.pow(x, i) for i, coeff in enumerate(xs)])\n\n\ndef find_zero(xs: list):\n    \"\"\" xs are coefficients of a polynomial.\n    find_zero find x such that poly(x) = 0.\n    find_zero returns only only zero point, even if there are many.\n    Moreover, find_zero only takes list xs having even number of coefficients\n    and largest non zero coefficient as it guarantees\n    a solution.\n    >>> round(find_zero([1, 2]), 2) # f(x) = 1 + 2x\n    -0.5\n    >>> round(find_zero([-6, 11, -6, 1]), 2) # (x - 1) * (x - 2) * (x - 3) = -6 + 11x - 6x^2 + x^3\n    1.0\n    \"\"\"\n",
+   "entry_point": "find_zero",
+   "canonical_solution": "    begin, end = -1., 1.\n    while poly(xs, begin) * poly(xs, end) > 0:\n        begin *= 2.0\n        end *= 2.0\n    while end - begin > 1e-10:\n        center = (begin + end) / 2.0\n        if poly(xs, center) * poly(xs, begin) > 0:\n            begin = center\n        else:\n            end = center\n    return begin\n",
+   "test": "\n\nMETADATA = {}\n\n\ndef check(candidate):\n    import math\n    import random\n    rng = random.Random(42)\n    import copy\n    for _ in range(100):\n        ncoeff = 2 * rng.randint(1, 4)\n        coeffs = []\n        for _ in range(ncoeff):\n            coeff = rng.randint(-10, 10)\n            if coeff == 0:\n                coeff = 1\n            coeffs.append(coeff)\n        solution = candidate(copy.deepcopy(coeffs))\n        assert math.fabs(poly(coeffs, solution)) < 1e-4\n\n",
+   "why_selected": "Helper in the prompt; the test is a seeded random loop checking a property (|poly(x)| < 1e-4), not fixed answers.",
+   "used_in_lab1": false,
+   "record_sha256": "bc6af77476fd8ac11e8246bc9dc9e525d976886648b01d8d22541e1b6d2f12ee"
+  },
+  {
+   "task_id": "HumanEval/34",
+   "prompt": "\n\ndef unique(l: list):\n    \"\"\"Return sorted unique elements in a list\n    >>> unique([5, 3, 5, 2, 3, 3, 9, 0, 123])\n    [0, 2, 3, 5, 9, 123]\n    \"\"\"\n",
+   "entry_point": "unique",
+   "canonical_solution": "    return sorted(list(set(l)))\n",
+   "test": "\n\nMETADATA = {}\n\n\ndef check(candidate):\n    assert candidate([5, 3, 5, 2, 3, 3, 9, 0, 123]) == [0, 2, 3, 5, 9, 123]\n\n",
+   "why_selected": "A single assert: the weakest possible test. A hard-coded answer passes it.",
+   "used_in_lab1": false,
+   "record_sha256": "16b7afffbfb6675ea2d32cc1c0cfece939c34cb9cd8ec9bd29f17aa323f084dd"
+  },
+  {
+   "task_id": "HumanEval/35",
+   "prompt": "\n\ndef max_element(l: list):\n    \"\"\"Return maximum element in the list.\n    >>> max_element([1, 2, 3])\n    3\n    >>> max_element([5, 3, -5, 2, -3, 3, 9, 0, 123, 1, -10])\n    123\n    \"\"\"\n",
+   "entry_point": "max_element",
+   "canonical_solution": "    m = l[0]\n    for e in l:\n        if e > m:\n            m = e\n    return m\n",
+   "test": "\n\nMETADATA = {}\n\n\ndef check(candidate):\n    assert candidate([1, 2, 3]) == 3\n    assert candidate([5, 3, -5, 2, -3, 3, 9, 0, 124, 1, -10]) == 124\n",
+   "why_selected": "Only 2 asserts, and the test uses 124 where the docstring example uses 123.",
+   "used_in_lab1": false,
+   "record_sha256": "2e5e70a404970ef35a54acff65c9daed03325347e002be7260e1ec95d3336be7"
+  },
+  {
+   "task_id": "HumanEval/53",
+   "prompt": "\n\ndef add(x: int, y: int):\n    \"\"\"Add two numbers x and y\n    >>> add(2, 3)\n    5\n    >>> add(5, 7)\n    12\n    \"\"\"\n",
+   "entry_point": "add",
+   "canonical_solution": "    return x + y\n",
+   "test": "\n\nMETADATA = {}\n\n\ndef check(candidate):\n    import random\n\n    assert candidate(0, 1) == 1\n    assert candidate(1, 0) == 1\n    assert candidate(2, 3) == 5\n    assert candidate(5, 7) == 12\n    assert candidate(7, 5) == 12\n\n    for i in range(100):\n        x, y = random.randint(0, 1000), random.randint(0, 1000)\n        assert candidate(x, y) == x + y\n\n",
+   "why_selected": "An UNSEEDED random test: two runs check different inputs, so the test is not reproducible.",
+   "used_in_lab1": false,
+   "record_sha256": "131b15a61fb1866cbc5af0dcc669b2ab978a972103180b236709811e9c61a78f"
+  }
+ ]
+}
